@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI YouTube Studio</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0b1220;color:#f0f6ff;font:16px system-ui,sans-serif}
+main{max-width:850px;margin:55px auto;padding:20px}h1{font-size:clamp(30px,5vw,48px);margin-bottom:8px}
+p,.muted{color:#a9bed3}.card{background:#17253b;border:1px solid #314767;border-radius:18px;padding:25px;margin-top:25px}
+label{display:block;margin-bottom:9px}input{width:100%;padding:15px;border:1px solid #57728e;border-radius:9px;background:#0c182c;color:white;font-size:16px}
+button{padding:14px 20px;border:0;border-radius:10px;background:#38bdf8;color:#082036;font-size:16px;font-weight:700;margin-top:15px;cursor:pointer}
+button:disabled{opacity:.55}a{color:#7dd3fc}video{width:100%;border-radius:12px;margin-top:15px}
+#status{white-space:pre-wrap}code{overflow-wrap:anywhere}
+</style></head>
+<body><main><h1>🎬 AI YouTube Studio</h1><p>Create downloadable video drafts from a topic.</p>
+<div class="card"><form id="form"><label for="topic">Video topic</label>
+<input name="topic" id="topic" required minlength="3" maxlength="120" placeholder="How desalination works">
+<button id="submit" type="submit">Generate video</button></form>
+<p id="status" role="status" aria-live="polite"></p><div id="result"></div></div>
+<p class="muted">Prototype: four silent title scenes. AI narration, research and YouTube publishing are not yet connected.</p></main>
+<script src="./config.js"></script><script>
+const api=(window.AI_STUDIO_API_URL||"").replace(/\/$/,"");
+const status=document.querySelector("#status"),result=document.querySelector("#result"),btn=document.querySelector("#submit");
+const form=document.querySelector("#form");
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+form.addEventListener("submit",async event=>{
+event.preventDefault();result.replaceChildren();
+if(!api){status.textContent="Backend not configured. Set AI_STUDIO_API_URL in dist/config.js to your Render Web Service URL and redeploy.";return}
+btn.disabled=true;
+try{
+status.textContent="Submitting video job...";
+const response=await fetch(api+"/api/generate",{method:"POST",body:new FormData(form)});
+const data=await response.json();
+if(!response.ok)throw Error(data.detail||"Unable to start video");
+let ready=false;
+for(let n=0;n<100;n++){
+await sleep(1500);
+const r=await fetch(api+"/api/jobs/"+encodeURIComponent(data.job_id));
+if(!r.ok)throw Error("Unable to check job status");
+const j=await r.json();
+status.textContent="Video status: "+j.status;
+if(j.status==="failed")throw Error(j.error||"Rendering failed");
+if(j.status==="ready"){ready=true;break}
+}
+if(!ready)throw Error("Rendering timed out. Try again.");
+const url=api+"/api/jobs/"+encodeURIComponent(data.job_id)+"/download";
+const a=document.createElement("a");a.href=url;a.textContent="Download MP4";a.target="_blank";a.rel="noopener";
+const v=document.createElement("video");v.controls=true;v.src=url;
+result.append(a,v);
+}catch(e){status.textContent="Error: "+e.message+"\nCheck the backend URL and CORS FRONTEND_ORIGIN setting."}
+finally{btn.disabled=false}
+});
+</script></body></html>
