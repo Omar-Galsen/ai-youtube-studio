@@ -5,4 +5,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY app.py .
 COPY templates ./templates
-CMD ["sh","-c","uvicorn app:app --host 0.0.0.0 --port ${PORT:-10000}"]
+RUN useradd -m -u 1000 user && mkdir -p /tmp/ai-youtube-studio && chown -R user:user /app /tmp/ai-youtube-studio
+USER user
+ENV PORT=7860
+EXPOSE 7860
+CMD ["sh","-c","uvicorn app:app --host 0.0.0.0 --port ${PORT:-7860}"]
