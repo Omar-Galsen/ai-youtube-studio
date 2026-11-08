@@ -1,11 +1,17 @@
 import uuid, subprocess, shutil, threading, textwrap
 from pathlib import Path
 from fastapi import FastAPI, Form, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+import os
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from PIL import Image, ImageDraw, ImageFont
 
 app = FastAPI(title="AI YouTube Studio")
+# Set FRONTEND_ORIGIN to your Render static-site URL, without a trailing slash.
+allowed_origin = os.getenv("FRONTEND_ORIGIN", "").rstrip("/")
+if allowed_origin:
+    app.add_middleware(CORSMiddleware, allow_origins=[allowed_origin], allow_methods=["GET", "POST"], allow_headers=["*"])
 templates = Jinja2Templates(directory="templates")
 OUTPUT = Path("/tmp/ai-youtube-studio")
 OUTPUT.mkdir(exist_ok=True)
